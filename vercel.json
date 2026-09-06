@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "css/**", "use": "@vercel/static" },
+    { "src": "screens/**", "use": "@vercel/static" },
+    { "src": "services/**", "use": "@vercel/static" },
+    { "src": "utils/**", "use": "@vercel/static" },
+    { "src": "assets/**", "use": "@vercel/static" },
+    { "src": "api/*.js", "use": "@vercel/node" }
+  ],
   "routes": [
     { "src": "/api/gemini", "dest": "/api/gemini.js" },
     { "src": "/api/agromarket", "dest": "/api/agromarket.js" },
@@ -12,8 +21,6 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=*, microphone=*, geolocation=*" }
       ]
     }

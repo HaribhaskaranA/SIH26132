@@ -5,8 +5,7 @@
   "description": "EARTHWORM Agritech AI & Mandi Market Linkage Platform",
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js",
-    "build": "echo Static build ready"
+    "start": "node server.js"
   },
   "keywords": [
     "earthworm",
