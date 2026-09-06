@@ -134,10 +134,14 @@ SET user_id = id::text
 WHERE user_id IS NULL OR user_id = '';
 
 -- ------------------------------------------------------------------------------
--- 4. FIX HANDLE_NEW_USER TRIGGER FUNCTION
+-- 4. ATOMIC TRIGGER FUNCTION FOR PUBLIC.PROFILES (SECURITY DEFINER)
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SECURITY DEFINER
+SET search_path = public, auth
+LANGUAGE plpgsql
+AS $$
 DECLARE
   v_user_id TEXT;
   v_role TEXT;
@@ -152,25 +156,32 @@ DECLARE
   v_aadhaar_pan TEXT;
   v_proof_doc TEXT;
 BEGIN
-  -- Extract user_id with fallback to auth UUID
+  -- Extract application user_id from metadata or fallback safely
   v_user_id := COALESCE(
-    new.raw_user_meta_data->>'user_id',
-    new.raw_user_meta_data->>'userId',
-    new.raw_user_meta_data->>'username',
+    NULLIF(TRIM(new.raw_user_meta_data->>'user_id'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'userId'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'username'), ''),
     split_part(new.email, '@', 1),
-    new.id::text
+    'EW-' || SUBSTRING(new.id::text, 1, 8)
   );
 
-  v_role := COALESCE(new.raw_user_meta_data->>'role', 'farmer');
+  v_role := LOWER(COALESCE(NULLIF(TRIM(new.raw_user_meta_data->>'role'), ''), 'farmer'));
+  IF v_role NOT IN ('farmer', 'buyer') THEN
+    v_role := 'farmer';
+  END IF;
+
   v_full_name := COALESCE(
-    new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'contact_person',
-    new.raw_user_meta_data->>'entity_name',
+    NULLIF(TRIM(new.raw_user_meta_data->>'full_name'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'contact_person'), ''),
+    NULLIF(TRIM(new.raw_user_meta_data->>'entity_name'), ''),
     'Earthworm User'
   );
+
   v_phone := COALESCE(new.raw_user_meta_data->>'phone', '');
-  v_district := COALESCE(new.raw_user_meta_data->>'district', 'Coimbatore');
-  v_language := COALESCE(new.raw_user_meta_data->>'language', 'en');
+  v_district := COALESCE(NULLIF(TRIM(new.raw_user_meta_data->>'district'), ''), 'Coimbatore');
+  v_language := COALESCE(NULLIF(TRIM(new.raw_user_meta_data->>'language'), ''), 'en');
+  
+  -- Buyer specific metadata
   v_entity_name := new.raw_user_meta_data->>'entity_name';
   v_contact_person := new.raw_user_meta_data->>'contact_person';
   v_gstin := new.raw_user_meta_data->>'gstin';
@@ -178,6 +189,7 @@ BEGIN
   v_aadhaar_pan := new.raw_user_meta_data->>'aadhaar_pan';
   v_proof_doc := new.raw_user_meta_data->>'proof_doc';
 
+  -- Upsert into public.profiles
   INSERT INTO public.profiles (
     id,
     user_id,
@@ -219,21 +231,17 @@ BEGIN
     phone = EXCLUDED.phone,
     district = EXCLUDED.district,
     language = EXCLUDED.language,
-    entity_name = EXCLUDED.entity_name,
-    contact_person = EXCLUDED.contact_person,
-    gstin = EXCLUDED.gstin,
-    fssai = EXCLUDED.fssai,
-    aadhaar_pan = EXCLUDED.aadhaar_pan,
-    proof_doc = EXCLUDED.proof_doc,
+    entity_name = COALESCE(EXCLUDED.entity_name, profiles.entity_name),
+    contact_person = COALESCE(EXCLUDED.contact_person, profiles.contact_person),
+    gstin = COALESCE(EXCLUDED.gstin, profiles.gstin),
+    fssai = COALESCE(EXCLUDED.fssai, profiles.fssai),
+    aadhaar_pan = COALESCE(EXCLUDED.aadhaar_pan, profiles.aadhaar_pan),
+    proof_doc = COALESCE(EXCLUDED.proof_doc, profiles.proof_doc),
     updated_at = NOW();
 
   RETURN new;
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE WARNING 'handle_new_user error for %: %', new.id, SQLERRM;
-    RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Rebind trigger cleanly
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -252,15 +260,23 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.grievances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quality_scans ENABLE ROW LEVEL SECURITY;
 
--- Profiles Policies
+-- Strict Profiles Policies (Zero Public Read, Strict Self Ownership)
 DROP POLICY IF EXISTS "Public profiles read access" ON public.profiles;
-CREATE POLICY "Public profiles read access" ON public.profiles FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
-CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id OR auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+
+CREATE POLICY "Users can view own profile" 
+ON public.profiles 
+FOR SELECT 
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" 
+ON public.profiles 
+FOR UPDATE 
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
 
 -- Farms Policies
 DROP POLICY IF EXISTS "Allow read access to farms" ON public.farms;

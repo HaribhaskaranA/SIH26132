@@ -96,25 +96,8 @@ const SupabaseService = {
         authUser = signUpData.user;
       }
 
-      // Step B: Upsert Profile in 'profiles' table
-      if (authUser) {
-        const { error: profileErr } = await client.from('profiles').upsert({
-          id: authUser.id,
-          user_id: userId,
-          role: 'farmer',
-          full_name: fullName || 'Farmer',
-          phone: phone || '',
-          district: district || 'Coimbatore',
-          language: language || 'en',
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
-
-        if (profileErr) {
-          console.warn('⚠️ Supabase profile sync notice:', profileErr.message);
-        }
-      }
-
-      return { success: true, user: authUser, userId, role: 'farmer' };
+      // Step B: Ensure user session is active (Profile row is handled atomically by database trigger)
+      return { success: true, user: authUser, session: signUpData.session, userId, role: 'farmer' };
     } catch (err) {
       console.warn('Supabase signUpFarmer fallback to local:', err.message || err);
       return { success: true, offline: true, userId, role: 'farmer', error: err.message };
@@ -140,8 +123,6 @@ const SupabaseService = {
         options: {
           data: {
             user_id: userId,
-            userId: userId,
-            username: userId,
             role: 'buyer',
             entity_name: entityName,
             contact_person: contactPerson,
@@ -171,29 +152,8 @@ const SupabaseService = {
         authUser = signUpData.user;
       }
 
-      if (authUser) {
-        const { error: profileErr } = await client.from('profiles').upsert({
-          id: authUser.id,
-          user_id: userId,
-          role: 'buyer',
-          full_name: contactPerson || entityName,
-          entity_name: entityName,
-          contact_person: contactPerson,
-          phone: phone,
-          gstin: gstin,
-          aadhaar_pan: aadhaarPan,
-          fssai: fssai,
-          district: district,
-          proof_doc: proofDoc,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
-
-        if (profileErr) {
-          console.warn('⚠️ Supabase buyer profile sync notice:', profileErr.message);
-        }
-      }
-
-      return { success: true, user: authUser, userId, role: 'buyer' };
+      // Profile row is handled atomically by database trigger
+      return { success: true, user: authUser, session: signUpData.session, userId, role: 'buyer' };
     } catch (err) {
       console.warn('Supabase signUpBuyer fallback to local:', err.message || err);
       return { success: true, offline: true, userId, role: 'buyer', error: err.message };
