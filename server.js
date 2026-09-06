@@ -45,6 +45,11 @@ function getGeminiHandler() {
   return require(handlerPath);
 }
 
+function getGeminiQualityHandler() {
+  const handlerPath = path.join(__dirname, 'api', 'gemini-quality.js');
+  return require(handlerPath);
+}
+
 function getAgromarketHandler() {
   const handlerPath = path.join(__dirname, 'api', 'agromarket.js');
   return require(handlerPath);
@@ -133,7 +138,50 @@ const server = http.createServer(async (req, res) => {
   }
 
   // -------------------------------------------------------------
-  // 2. API Route: /api/agromarket
+  // 2. API Route: /api/gemini-quality (Dedicated Quality Scan & Vision)
+  // -------------------------------------------------------------
+  if (pathname === '/api/gemini-quality' || pathname === '/api/gemini-quality.js') {
+    let bodyData = '';
+    req.on('data', chunk => {
+      bodyData += chunk;
+      if (bodyData.length > 25 * 1024 * 1024) {
+        res.status(413).json({ success: false, error: 'Payload too large (>25MB)' });
+        req.destroy();
+      }
+    });
+
+    req.on('end', async () => {
+      try {
+        req.body = bodyData ? JSON.parse(bodyData) : {};
+      } catch (e) {
+        req.body = {};
+      }
+
+      try {
+        const handler = getGeminiQualityHandler();
+        await handler(req, res);
+      } catch (handlerErr) {
+        console.error('[Server] Gemini Quality Handler Exception:', handlerErr);
+        if (!res.writableEnded) {
+          res.status(500).json({
+            success: false,
+            error: `Quality Server Handler Error: ${handlerErr.message}`,
+            diagnostics: {
+              environment: 'local',
+              requestReachedApi: true,
+              httpMethod: req.method,
+              endpoint: '/api/gemini-quality',
+              apiKeyConfigured: !!(process.env.QUALITY_SCAN_GEMINI_API_KEY || process.env.GEMINI_API_KEY)
+            }
+          });
+        }
+      }
+    });
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // 3. API Route: /api/agromarket
   // -------------------------------------------------------------
   if (pathname === '/api/agromarket' || pathname === '/api/agromarket.js') {
     try {

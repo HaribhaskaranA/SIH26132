@@ -138,7 +138,47 @@ const HomeDashboardScreen = {
         </div>
       </div>
 
-      <!-- 4. ALL NAVIGATION TILES (ON HOMEPAGE) -->
+      <!-- 4. NEARBY MARKET PRICES (Live Agmarknet / Neighboring Districts) -->
+      ${(() => {
+        const nearby = AgroDataService.getNearbyMarkets(farm.crop, farm.district);
+        return `
+        <div class="m-card" style="border: 2px solid #10b981; background: #ecfdf5;">
+          <div class="m-card-header" style="margin-bottom: 8px;">
+            <div class="m-card-title" style="color: #065f46; display: flex; align-items: center; gap: 6px;">
+              <span>📍 Nearby Market Prices</span>
+              <span style="font-size: 11px; font-weight: 700; color: #047857;">(${nearby.crop})</span>
+            </div>
+            ${nearby.isLive ? '<span class="m-badge m-badge-green" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800;">● LIVE DATA</span>' : '<span class="m-badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700;">⚠️ OFFLINE BENCHMARK</span>'}
+          </div>
+
+          <p style="font-size: 10px; color: #047857; margin-bottom: 8px;">
+            ${nearby.isLive ? 'Real-time wholesale prices from neighboring district APMC mandis:' : 'Regional mandi price estimates for neighboring trade hubs:'}
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 10.5px; margin-bottom: 10px;">
+            ${nearby.markets.map(m => `
+              <div style="background: #ffffff; border: 1px solid #a7f3d0; border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 700; color: #0f172a;">${m.name}</div>
+                  <div style="font-size: 9.5px; color: #059669; font-weight: 600;">${m.district} District • ${m.variety}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 13px; font-weight: 800; color: #15803d;">${m.rateKg}</div>
+                  <div style="font-size: 9px; color: #64748b;">${m.rateQtl}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <button class="m-btn m-btn-green" onclick="App.navigateTo('radar')" style="width: 100%; padding: 8px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; background: #059669; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <span>📈 View All Markets & Arbitrage Radar</span>
+            <span>→</span>
+          </button>
+        </div>
+        `;
+      })()}
+
+      <!-- 5. ALL NAVIGATION TILES (ON HOMEPAGE) -->
       <div style="margin-bottom: 14px;">
         <div style="font-size: 12px; font-weight: 800; color: var(--primary-forest); margin-bottom: 8px;">
           🧭 Quick Navigator:
@@ -216,7 +256,10 @@ const HomeDashboardScreen = {
 
   handleCropSwitch: function(newCrop) {
     AgroDataService.saveFarm({ crop: newCrop });
-    alert(`🌾 Active Cultivation Crop Updated to: ${newCrop}!\nMarket Net Realization Index recalculated for ${newCrop}.`);
+    const container = document.getElementById('mobileMainContent');
+    if (container) {
+      this.render(container);
+    }
   },
 
   publishCurrentLot: function() {

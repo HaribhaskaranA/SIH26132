@@ -184,7 +184,7 @@ Return ONLY a valid JSON object matching this exact schema:
 }`;
 
     try {
-      const response = await fetch('/api/gemini', {
+      const response = await fetch('/api/gemini-quality', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,7 +301,7 @@ Generate your ENTIRE audit report strictly and fluently in ${langName} (${lang})
     }
 
     try {
-      const response = await fetch('/api/gemini', {
+      const response = await fetch('/api/gemini-quality', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -328,5 +328,93 @@ const AgroDataService = {
         { icon: "🌽", name: "Maize (Hybrid Grain)", market: "Udumalpet APMC Terminal", rateKg: "₹24.00 / kg", rateQtl: "₹2,400 / quintal", trend: "+1.2%" }
       ];
     }
+  },
+
+  getNearbyMarkets: function(selectedCrop, targetDistrict) {
+    const farm = this.getFarm();
+    const dist = targetDistrict || farm.district || 'Coimbatore';
+    const crop = selectedCrop || farm.crop || 'Tomato';
+    const cleanCrop = crop.toLowerCase().split('(')[0].trim();
+
+    const neighborMap = {
+      "Coimbatore": ["Coimbatore", "Tiruppur", "Erode", "Dindigul", "Salem", "Pollachi"],
+      "Salem": ["Salem", "Namakkal", "Dharmapuri", "Erode", "Attur"],
+      "Tiruppur": ["Tiruppur", "Coimbatore", "Erode", "Dindigul", "Dharapuram"],
+      "Erode": ["Erode", "Tiruppur", "Salem", "Coimbatore", "Namakkal", "Perundurai"],
+      "Dindigul": ["Dindigul", "Madurai", "Theni", "Tiruppur", "Ottanchatram"],
+      "Madurai": ["Madurai", "Theni", "Dindigul", "Virudhunagar"],
+      "Namakkal": ["Namakkal", "Salem", "Erode", "Karur", "Rasipuram"],
+      "Thanjavur": ["Thanjavur", "Tiruchirappalli", "Tiruvarur", "Kumbakonam"]
+    };
+
+    const targetDistricts = neighborMap[dist] || [dist, "Coimbatore", "Salem", "Tiruppur", "Erode"];
+
+    // 1. Live Data.gov.in / Agmarknet Dynamic Mapping
+    if (this.isLive && this.liveRecords && this.liveRecords.length > 0) {
+      let filtered = this.liveRecords.filter(r => {
+        const rCrop = (r.commodity || '').toLowerCase();
+        const rDist = (r.district || '').toLowerCase();
+        const cropMatch = rCrop.includes(cleanCrop) || cleanCrop.includes(rCrop);
+        const distMatch = targetDistricts.some(d => rDist.includes(d.toLowerCase()));
+        return cropMatch && distMatch;
+      });
+
+      if (filtered.length === 0) {
+        filtered = this.liveRecords.filter(r => {
+          const rCrop = (r.commodity || '').toLowerCase();
+          return rCrop.includes(cleanCrop) || cleanCrop.includes(rCrop);
+        });
+      }
+
+      if (filtered.length > 0) {
+        return {
+          isLive: true,
+          source: 'Agmarknet / Data.gov.in',
+          updated: 'Today',
+          crop: crop.split('(')[0].trim(),
+          markets: filtered.slice(0, 4).map(r => {
+            const modal = parseFloat(r.modal_price) || 2400;
+            return {
+              name: r.market || `${r.district} Mandi`,
+              crop: r.commodity || crop,
+              variety: r.variety || 'Local',
+              rateQtl: `₹${modal.toLocaleString('en-IN')}/q`,
+              rateKg: `₹${(modal/100).toFixed(2)}/kg`,
+              district: r.district || dist
+            };
+          })
+        };
+      }
+    }
+
+    // 2. Localized Benchmark Proximity Fallback
+    const regionalBenchmarks = {
+      "Tomato": [
+        { name: `${dist} Central APMC`, crop: "Tomato", variety: "Hybrid Red", rateQtl: "₹2,400/q", rateKg: "₹24.00/kg", district: dist },
+        { name: "Pollachi Regulated Market", crop: "Tomato", variety: "Country Round", rateQtl: "₹2,350/q", rateKg: "₹23.50/kg", district: "Coimbatore" },
+        { name: "Tiruppur Uzhavar Sandhai", crop: "Tomato", variety: "Hybrid Red", rateQtl: "₹2,450/q", rateKg: "₹24.50/kg", district: "Tiruppur" },
+        { name: "Perundurai Wholesale Mandi", crop: "Tomato", variety: "Hybrid Red", rateQtl: "₹2,300/q", rateKg: "₹23.00/kg", district: "Erode" }
+      ],
+      "Onion": [
+        { name: `${dist} APMC Mandi`, crop: "Small Onion", variety: "Chinna Vengayam", rateQtl: "₹4,200/q", rateKg: "₹42.00/kg", district: dist },
+        { name: "Tiruppur Uzhavar Sandhai", crop: "Small Onion", variety: "Bellary", rateQtl: "₹4,100/q", rateKg: "₹41.00/kg", district: "Tiruppur" },
+        { name: "Dindigul Central Terminal", crop: "Small Onion", variety: "Chinna Vengayam", rateQtl: "₹4,350/q", rateKg: "₹43.50/kg", district: "Dindigul" },
+        { name: "Salem Shevapet Mandi", crop: "Big Onion", variety: "Bellary", rateQtl: "₹2,800/q", rateKg: "₹28.00/kg", district: "Salem" }
+      ],
+      "Default": [
+        { name: `${dist} Central Mandi`, crop: crop.split('(')[0].trim(), variety: "Grade A", rateQtl: "₹2,850/q", rateKg: "₹28.50/kg", district: dist },
+        { name: "Tiruppur Uzhavar Sandhai", crop: crop.split('(')[0].trim(), variety: "Local", rateQtl: "₹2,750/q", rateKg: "₹27.50/kg", district: "Tiruppur" },
+        { name: "Erode Perundurai Mandi", crop: crop.split('(')[0].trim(), variety: "Standard", rateQtl: "₹2,900/q", rateKg: "₹29.00/kg", district: "Erode" }
+      ]
+    };
+
+    const cleanKey = cleanCrop.includes('tomato') ? 'Tomato' : cleanCrop.includes('onion') ? 'Onion' : 'Default';
+    return {
+      isLive: false,
+      source: 'Agmarknet Benchmark',
+      updated: 'Today',
+      crop: crop.split('(')[0].trim(),
+      markets: regionalBenchmarks[cleanKey] || regionalBenchmarks['Default']
+    };
   }
 };
