@@ -95,7 +95,6 @@ const server = http.createServer(async (req, res) => {
     let bodyData = '';
     req.on('data', chunk => {
       bodyData += chunk;
-      // Safety limit: 25MB max for multimodal image payloads
       if (bodyData.length > 25 * 1024 * 1024) {
         res.status(413).json({ success: false, error: 'Payload too large (>25MB)' });
         req.destroy();
@@ -158,7 +157,15 @@ const server = http.createServer(async (req, res) => {
 
   // Prevent directory traversal attacks
   const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
-  const filePath = path.join(__dirname, safePath);
+  
+  // Resolve file from multiple possible root locations (local and cloud environments)
+  let filePath = path.join(__dirname, safePath);
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(process.cwd(), safePath);
+  }
+  if (!fs.existsSync(filePath) && safePath.startsWith(path.sep + 'index.html')) {
+    filePath = path.join(__dirname, 'index.html');
+  }
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
