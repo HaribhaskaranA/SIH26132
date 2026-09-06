@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f381e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>EARTHWORM | Market Linkages & Price Discovery</title>
+  
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for GIS Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Draw CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+  <!-- Mobile Stylesheet -->
+  <link rel="stylesheet" href="css/mobile_style.css">
+  <style>
+    /* 5-Language Selector Modal & Floating Toolbar Styles */
+    .lang-select-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1.5px solid #cbd5e1;
+      background: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f381e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .lang-select-btn.active {
+      background: #0f381e;
+      color: #ffffff;
+      border-color: #86efac;
+      box-shadow: 0 2px 8px rgba(15,56,30,0.3);
+    }
+    #mobileBottomNav {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #mobileBottomNav::-webkit-scrollbar {
+      display: none;
+    }
+    .nav-item {
+      min-width: 52px;
+      flex-shrink: 0;
+    }
+    .header-logout-btn {
+      background: rgba(239, 68, 68, 0.9);
+      border: 1px solid #fca5a5;
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: background 0.2s;
+    }
+    .header-logout-btn:hover {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Wrapper for Mobile Viewport -->
+  <div id="mobileAppContainer">
+    
+    <!-- Top Mobile App Bar -->
+    <header id="mobileHeader">
+      <div class="header-left" onclick="App.handleHeaderClick()" style="cursor: pointer;">
+        <img src="assets/logo.jpg" alt="Earthworm Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <span class="brand-title">EARTHWORM</span>
+          <span class="brand-sub">Agri Market Linkage</span>
+        </div>
+      </div>
+      <div class="header-right" style="display: flex; align-items: center; gap: 5px;">
+        <!-- 5-Language Switcher Dropdown Pill -->
+        <select id="headerLangSelect" onchange="App.setLanguage(this.value)" style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.4); color: #ffffff; font-size: 11px; font-weight: 800; padding: 5px 8px; border-radius: var(--radius-full); outline: none; cursor: pointer;">
+          <option value="en" style="color:#0f381e;">🇬🇧 English</option>
+          <option value="ta" style="color:#0f381e;">🇮🇳 தமிழ் (Tamil)</option>
+          <option value="hi" style="color:#0f381e;">🇮🇳 हिन्दी (Hindi)</option>
+          <option value="te" style="color:#0f381e;">🇮🇳 తెలుగు (Telugu)</option>
+          <option value="kn" style="color:#0f381e;">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+        </select>
+
+        <!-- Prominent Logout Button in Header (Visible when logged in) -->
+        <button id="headerLogoutBtn" class="header-logout-btn" onclick="App.logout()" style="display: none;">
+          🚪 <span id="lblHeaderLogout">Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Sub-header Breadcrumb / Current Tab Title -->
+    <div id="mobileSubHeader">
+      <span id="screenTitle">📱 Portal Login</span>
+      <span class="online-badge" id="appOnlineBadge">🔒 DPDP Secure</span>
+    </div>
+
+    <!-- Main Dynamic Screen Content Area (Scrollable) -->
+    <main id="mobileMainContent">
+      <!-- Dynamic Screen Injected Here -->
+    </main>
+
+    <!-- Bottom Navigation Bar (Visible only when logged in) -->
+    <nav id="mobileBottomNav" style="display: none;">
+      <button class="nav-item" onclick="App.navigateTo('dashboard')" data-tab="dashboard">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label" id="navLabelHome">Home</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('ai_chat')" data-tab="ai_chat" style="color: #15803d; font-weight: 800;">
+        <span class="nav-icon" style="font-size: 20px;">🤖</span>
+        <span class="nav-label" id="navLabelAiChat">Agri AI</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('sim_map')" data-tab="sim_map">
+        <span class="nav-icon">🗺️</span>
+        <span class="nav-label" id="navLabelSimMap">Sim Map</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('what_if')" data-tab="what_if">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label" id="navLabelWhatIf">What-If</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('quality')" data-tab="quality">
+        <span class="nav-icon">📸</span>
+        <span class="nav-label" id="navLabelQuality">AI Scan</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('storage')" data-tab="storage">
+        <span class="nav-icon">❄️</span>
+        <span class="nav-label" id="navLabelStorage">Storage</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('pooling')" data-tab="pooling">
+        <span class="nav-icon">🚚</span>
+        <span class="nav-label" id="navLabelLogistics">Logistics</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('transactions')" data-tab="transactions">
+        <span class="nav-icon">📜</span>
+        <span class="nav-label" id="navLabelInvoices">Invoices</span>
+      </button>
+      <button class="nav-item" onclick="App.navigateTo('grievance')" data-tab="grievance">
+        <span class="nav-icon">⚖️</span>
+        <span class="nav-label" id="navLabelDisputes">Disputes</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- External Libraries: Leaflet JS, Leaflet Draw & Turf -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Supabase JS Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Security & Utility Modules -->
+  <script src="utils/security_utils.js"></script>
+
+  <!-- Core Services -->
+  <script src="services/i18n_service.js"></script>
+  <script src="services/supabase_service.js"></script>
+  <script src="services/gemini_service.js"></script>
+  <script src="services/agro_data_service.js"></script>
+
+  <!-- Modular Screens -->
+  <script src="screens/00_auth_login.js"></script>
+  <script src="screens/01_auth_register.js"></script>
+  <script src="screens/01_farm_sim_map.js"></script>
+  <script src="screens/02_home_dashboard.js"></script>
+  <script src="screens/03_crop_budget.js"></script>
+  <script src="screens/04_quality_grading.js"></script>
+  <script src="screens/05_cold_storage.js"></script>
+  <script src="screens/06_ride_pooling.js"></script>
+  <script src="screens/07_market_radar.js"></script>
+  <script src="screens/08_ai_voice_assistant.js"></script>
+  <script src="screens/08_grievance_ai.js"></script>
+  <script src="screens/09_transactions_hub.js"></script>
+  <script src="screens/10_buyer_portal.js"></script>
+
+  <!-- Master App Orchestrator -->
+  <script>
+    const App = {
+      currentScreen: 'login',
+
+      init: async function() {
+        const savedLang = localStorage.getItem('earthworm_lang') || 'en';
+        this.setLanguage(savedLang, false);
+
+        // Initialize Supabase Backend Service
+        if (typeof SupabaseService !== 'undefined') {
+          SupabaseService.init();
+        }
+
+        // Ingest Live Data.gov.in Agmarknet Market Prices on Boot
+        if (typeof AgroDataService !== 'undefined' && AgroDataService.fetchLiveAgmarknetPrices) {
+          AgroDataService.fetchLiveAgmarknetPrices();
+        }
+
+        // Fresh Start on Login Portal
+        localStorage.removeItem('earthworm_user_logged_in');
+        sessionStorage.removeItem('earthworm_user_logged_in');
+        this.navigateTo('login');
+      },
+
+      setLanguage: function(lang, reRender = true) {
+        I18nService.setLanguage(lang);
+        const select = document.getElementById('headerLangSelect');
+        if (select) select.value = lang;
+
+        this.updateNavLabels();
+
+        if (reRender && this.currentScreen) {
+          this.navigateTo(this.currentScreen);
+        }
+      },
+
+      updateNavLabels: function() {
+        const setTxt = (id, key) => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = I18nService.t(key);
+        };
+        setTxt('navLabelHome', 'nav_dashboard');
+        setTxt('navLabelAiChat', 'nav_ai_chat');
+        setTxt('navLabelSimMap', 'nav_sim_map');
+        setTxt('navLabelWhatIf', 'nav_what_if');
+        setTxt('navLabelQuality', 'nav_quality');
+        setTxt('navLabelStorage', 'nav_storage');
+        setTxt('navLabelLogistics', 'nav_pooling');
+        setTxt('navLabelInvoices', 'nav_transactions');
+        setTxt('navLabelDisputes', 'nav_disputes');
+        setTxt('lblHeaderLogout', 'btn_logout');
+      },
+
+      navigateTo: function(screenId) {
+        const isLoggedIn = localStorage.getItem('earthworm_user_logged_in') === 'true';
+
+        // GATEKEEPER: Lock all features until user logs in
+        if (!isLoggedIn && screenId !== 'login' && screenId !== 'register') {
+          alert(I18nService.t('msg_login_required'));
+          screenId = 'login';
+        }
+
+        this.currentScreen = screenId;
+
+        const navBar = document.getElementById('mobileBottomNav');
+        const logoutBtn = document.getElementById('headerLogoutBtn');
+        const container = document.getElementById('mobileMainContent');
+        const titleElem = document.getElementById('screenTitle');
+        const badgeElem = document.getElementById('appOnlineBadge');
+
+        // Toggle Header Logout button
+        if (logoutBtn) {
+          logoutBtn.style.display = isLoggedIn && screenId !== 'login' && screenId !== 'register' ? 'inline-flex' : 'none';
+        }
+
+        // Toggle Bottom Nav visibility: strictly hidden on Login, Register, or Buyer Portal
+        if (screenId === 'login' || screenId === 'register' || screenId === 'buyer_portal' || !isLoggedIn) {
+          navBar.style.display = 'none';
+          if (badgeElem) badgeElem.innerText = screenId === 'buyer_portal' ? "🏢 Buyer Mode" : "🔒 DPDP Secure";
+        } else {
+          navBar.style.display = 'flex';
+          if (badgeElem) badgeElem.innerText = "● " + I18nService.t('nav_dashboard');
+        }
+
+        // Update Bottom Nav Active States
+        document.querySelectorAll('#mobileBottomNav .nav-item').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === screenId);
+        });
+
+        // Scroll to top
+        container.scrollTop = 0;
+        this.updateNavLabels();
+
+        switch(screenId) {
+          case 'login':
+            titleElem.innerHTML = "📱 " + I18nService.t('title_login');
+            AuthLoginScreen.render(container);
+            break;
+          case 'register':
+            titleElem.innerHTML = "📝 " + I18nService.t('title_register');
+            AuthRegisterScreen.render(container);
+            break;
+          case 'dashboard':
+            titleElem.innerHTML = "🏠 " + I18nService.t('title_dashboard');
+            HomeDashboardScreen.render(container);
+            break;
+          case 'ai_chat':
+            titleElem.innerHTML = "🤖 " + I18nService.t('title_ai_chat');
+            AiVoiceAssistantScreen.render(container);
+            break;
+          case 'sim_map':
+            titleElem.innerHTML = "🗺️ " + I18nService.t('title_sim_map');
+            FarmSimMapScreen.render(container);
+            break;
+          case 'what_if':
+            titleElem.innerHTML = "📊 " + I18nService.t('title_crop_budget');
+            CropBudgetScreen.render(container);
+            break;
+          case 'quality':
+            titleElem.innerHTML = "📸 " + I18nService.t('title_quality');
+            QualityGradingScreen.render(container);
+            break;
+          case 'storage':
+            titleElem.innerHTML = "❄️ " + I18nService.t('title_storage');
+            ColdStorageScreen.render(container);
+            break;
+          case 'pooling':
+            titleElem.innerHTML = "🚚 " + I18nService.t('title_pooling');
+            RidePoolingScreen.render(container);
+            break;
+          case 'transactions':
+            titleElem.innerHTML = "📜 " + I18nService.t('title_transactions');
+            TransactionsHubScreen.render(container);
+            break;
+          case 'radar':
+            titleElem.innerHTML = "⚠️ " + I18nService.t('title_radar');
+            MarketRadarScreen.render(container);
+            break;
+          case 'grievance':
+            titleElem.innerHTML = "⚖️ " + I18nService.t('title_grievance');
+            GrievanceAiScreen.render(container);
+            break;
+          case 'buyer_portal':
+            titleElem.innerHTML = "🏢 " + I18nService.t('title_buyer_portal');
+            BuyerPortalScreen.render(container);
+            break;
+          default:
+            HomeDashboardScreen.render(container);
+        }
+      },
+
+      handleHeaderClick: function() {
+        const isLoggedIn = localStorage.getItem('earthworm_user_logged_in') === 'true';
+        if (isLoggedIn) {
+          const role = localStorage.getItem('earthworm_user_role');
+          if (role === 'buyer') {
+            this.navigateTo('buyer_portal');
+          } else {
+            this.navigateTo('dashboard');
+          }
+        } else {
+          this.navigateTo('login');
+        }
+      },
+
+      logout: async function() {
+        if (typeof SupabaseService !== 'undefined') {
+          await SupabaseService.signOut();
+        }
+        localStorage.removeItem('earthworm_user_logged_in');
+        sessionStorage.removeItem('earthworm_user_logged_in');
+        alert(I18nService.t('msg_logout_success'));
+        this.navigateTo('login');
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
+</body>
+</html>

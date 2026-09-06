@@ -1,0 +1,17 @@
+{
+  "name": "earthworm-mobile-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EARTHWORM Agritech AI & Mandi Market Linkage Platform",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "earthworm",
+    "agritech",
+    "gemini"
+  ],
+  "author": "EARTHWORM",
+  "license": "ISC"
+}
