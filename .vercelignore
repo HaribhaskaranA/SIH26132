@@ -1,0 +1,6 @@
+# Ignore local server and test files on Vercel deployment so Vercel serves static files via Edge CDN
+server.js
+test_*.js
+*.sql
+.env
+.env.local
