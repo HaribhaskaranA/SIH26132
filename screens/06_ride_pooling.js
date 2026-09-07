@@ -1,10 +1,28 @@
 // Mobile Screen 06: Logistics Hub with Instant GPS Transition & Downloadable Receipt
-const RidePoolingScreen = {
-  currentMode: 'shared', // 'shared', 'individual', or 'tracking'
-  trackingMap: null,
-  truckMarker: null,
-  trackingInterval: null,
+window.RidePoolingScreen = {
+  currentMode: 'tracking',
   activeBooking: null,
+  currentStageIndex: 1, // 0: Assigned, 1: Reaching Farm, 2: Pickup Completed, 3: In Transit, 4: Delivered
+  
+  stages: [
+    { id: 'ASSIGNED', name: 'Assigned', icon: '📋', desc: 'Driver & Vehicle Allocated' },
+    { id: 'REACHING_FARM', name: 'Reaching Farm', icon: '🚜', desc: 'Vehicle En Route to Farmgate' },
+    { id: 'PICKUP_COMPLETED', name: 'Pickup Done', icon: '📦', desc: 'Loaded & Weighed at Farm' },
+    { id: 'IN_TRANSIT', name: 'In Transit', icon: '🚚', desc: 'Produce Heading to Buyer / Mandi' },
+    { id: 'DELIVERED', name: 'Delivered', icon: '🏁', desc: 'Arrived at Buyer Weighbridge' }
+  ],
+
+  setStage: function(index) {
+    this.currentStageIndex = Math.max(0, Math.min(index, this.stages.length - 1));
+    const container = document.getElementById('mobileMainContent');
+    this.render(container);
+  },
+
+  advanceStage: function() {
+    this.currentStageIndex = (this.currentStageIndex + 1) % this.stages.length;
+    const container = document.getElementById('mobileMainContent');
+    this.render(container);
+  },
 
   getActiveBooking: function() {
     if (this.activeBooking) return this.activeBooking;
@@ -20,7 +38,11 @@ const RidePoolingScreen = {
       driver: 'Murugan K (TN-25-AK-4820)',
       amount: 800,
       savings: 1400,
-      route: `${farm.district} Rural Hub ➔ ${mandiInfo.mandi}`
+      route: `${farm.district} Rural Hub ➔ ${mandiInfo.mandi}`,
+      pickupEta: '12 mins',
+      pickupDist: '4.2 km',
+      deliveryEta: '28 mins',
+      deliveryDist: '18.5 km'
     };
     return this.activeBooking;
   },
@@ -39,7 +61,7 @@ const RidePoolingScreen = {
           🚛 Solo (₹2.2k)
         </button>
         <button id="btnModeTracking" class="m-btn ${this.currentMode === 'tracking' ? 'm-btn-green' : 'm-btn-outline'}" onclick="RidePoolingScreen.switchMode('tracking')" style="padding: 7px 8px; font-size: 10px; flex: 1; border-radius: var(--radius-full);">
-          📍 Live GPS Track
+          📍 Live GPS & ETA
         </button>
       </div>
 
@@ -65,76 +87,106 @@ const RidePoolingScreen = {
     const farm = AgroDataService.getFarm();
     const mandiInfo = AgroDataService.getMandiForDistrict(farm.district);
     const booking = this.getActiveBooking();
+    const currStage = this.stages[this.currentStageIndex];
 
     if (this.currentMode === 'tracking') {
       return `
-        <!-- Live GPS Transport Tracking View -->
+        <!-- Live GPS Transport Tracking & Dual ETA View -->
         <div class="m-card">
           <div class="m-card-header">
-            <div class="m-card-title">📍 Live GPS Vehicle Tracking (${farm.district})</div>
-            <span class="m-badge m-badge-green">● Moving (42 km/h)</span>
+            <div class="m-card-title">📍 Live Transport Status & ETA (${farm.district})</div>
+            <span class="m-badge ${this.currentStageIndex === 4 ? 'm-badge-green' : 'm-badge-blue'}">
+              ● ${currStage.name}
+            </span>
           </div>
 
-          <!-- Booking Confirmation Success Banner -->
-          <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #166534; margin-bottom: 8px; font-weight: 700;">
-            ✓ Transport Dispatched: ${booking.service} • Ref: ${booking.id}
+          <!-- 5-STAGE TRANSPORT STATUS STEPPER -->
+          <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 8px; margin-bottom: 10px;">
+            <div style="font-size: 10.5px; font-weight: 800; color: #0f381e; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span>🚀 Transport Workflow:</span>
+              <span style="font-size: 10px; color: #166534;">Stage ${this.currentStageIndex + 1} of 5</span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; position: relative; margin-bottom: 6px;">
+              ${this.stages.map((stg, i) => {
+                const isPassed = i < this.currentStageIndex;
+                const isCurrent = i === this.currentStageIndex;
+                const bg = isCurrent ? '#15803d' : isPassed ? '#16a34a' : '#e2e8f0';
+                const color = isCurrent || isPassed ? '#ffffff' : '#64748b';
+                return `
+                  <div onclick="RidePoolingScreen.setStage(${i})" style="flex: 1; text-align: center; cursor: pointer;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: ${bg}; color: ${color}; font-size: 11px; display: flex; align-items: center; justify-content: center; margin: 0 auto 3px auto; font-weight: 800; box-shadow: ${isCurrent ? '0 0 8px rgba(22,163,74,0.5)' : 'none'};">
+                      ${isPassed ? '✓' : stg.icon}
+                    </div>
+                    <div style="font-size: 8.5px; font-weight: ${isCurrent ? '800' : '600'}; color: ${isCurrent ? '#15803d' : '#475569'}; line-height: 1.1;">
+                      ${stg.name}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <div style="background: #f0fdf4; border-radius: 6px; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <span style="font-size: 10px; color: #166534; font-weight: 700;">
+                Current Status: <strong>${currStage.name}</strong> • ${currStage.desc}
+              </span>
+              <button class="m-btn m-btn-green" onclick="RidePoolingScreen.advanceStage()" style="width: auto; padding: 3px 8px; font-size: 9.5px;">
+                ⚡ Next Step →
+              </button>
+            </div>
+          </div>
+
+          <!-- DUAL ESTIMATED TIME CARDS (PICKUP ETA & BUYER DELIVERY ETA) -->
+          <div class="m-grid-2" style="margin-bottom: 8px;">
+            <!-- ETA 1: Vehicle Reaching Farm (Pickup) -->
+            <div class="m-stat-box" style="background: ${this.currentStageIndex < 2 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.currentStageIndex < 2 ? '#10b981' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
+              <div style="font-size: 9px; color: #047857; font-weight: 700;">🚜 Pickup ETA (To Farmgate):</div>
+              <div class="m-stat-val" style="color: ${this.currentStageIndex < 2 ? '#15803d' : '#64748b'}; font-size: 16px;">
+                ${this.currentStageIndex < 2 ? '12 mins' : '✓ Arrived & Loaded'}
+              </div>
+              <div style="font-size: 9px; color: #64748b;">
+                ${this.currentStageIndex < 2 ? 'Distance: 4.2 km (En Route)' : 'Farmgate Pickup Complete'}
+              </div>
+            </div>
+
+            <!-- ETA 2: Produce Reaching Buyer / Mandi -->
+            <div class="m-stat-box" style="background: ${this.currentStageIndex >= 2 && this.currentStageIndex < 4 ? '#eff6ff' : this.currentStageIndex === 4 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.currentStageIndex >= 2 ? '#3b82f6' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
+              <div style="font-size: 9px; color: #1d4ed8; font-weight: 700;">🏁 Delivery ETA (To Buyer):</div>
+              <div class="m-stat-val" style="color: ${this.currentStageIndex === 4 ? '#15803d' : '#1d4ed8'}; font-size: 16px;">
+                ${this.currentStageIndex === 4 ? '✓ Delivered' : this.currentStageIndex >= 2 ? '28 mins' : 'Est. ~45 mins'}
+              </div>
+              <div style="font-size: 9px; color: #64748b;">
+                ${this.currentStageIndex === 4 ? 'At Mandi Weighbridge' : 'Target: ' + mandiInfo.mandi}
+              </div>
+            </div>
           </div>
 
           <!-- Interactive Tracking Map Canvas -->
-          <div id="transportTrackingMap" class="m-map-container" style="height: 210px; margin-bottom: 8px;"></div>
-
-          <!-- Live Telemetry Readout -->
-          <div class="m-grid-3">
-            <div class="m-stat-box" style="background: #f0fdf4; border-color: #86efac;">
-              <div class="m-stat-val" style="color: #15803d;" id="trackEta">18 min</div>
-              <div class="m-stat-lbl">Estimated Arrival</div>
-            </div>
-            <div class="m-stat-box">
-              <div class="m-stat-val" id="trackDist">10.4 km</div>
-              <div class="m-stat-lbl">Distance Remaining</div>
-            </div>
-            <div class="m-stat-box">
-              <div class="m-stat-val" style="color: var(--accent-green);" id="trackSpeed">42 km/h</div>
-              <div class="m-stat-lbl">Vehicle Speed</div>
-            </div>
-          </div>
+          <div id="transportTrackingMap" class="m-map-container" style="height: 190px; margin-bottom: 8px;"></div>
 
           <!-- Driver Telemetry Card -->
-          <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 8px;">
+          <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-size: 12px; font-weight: 800; color: #0f381e;">🚛 Driver: ${booking.driver}</div>
-                <div style="font-size: 10px; color: #64748b;">Route: <strong>${booking.route}</strong></div>
+                <div style="font-size: 11.5px; font-weight: 800; color: #0f381e;">🚛 Driver: ${booking.driver}</div>
+                <div style="font-size: 9.5px; color: #64748b;">Route: <strong>${booking.route}</strong></div>
               </div>
-              <button class="m-btn m-btn-green" style="padding: 6px 12px; width: auto; font-size: 11px;" onclick="RidePoolingScreen.callDriver('${booking.driver}')">
+              <button class="m-btn m-btn-green" style="padding: 6px 12px; width: auto; font-size: 10.5px;" onclick="RidePoolingScreen.callDriver('${booking.driver}')">
                 ${I18nService.t('btn_call_driver')}
               </button>
             </div>
           </div>
 
-          <!-- 4-Stage Delivery Stepper -->
-          <div style="margin-top: 8px; font-size: 10.5px; background: #f1f5f9; padding: 8px 10px; border-radius: 6px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>1. Farmgate Dispatched:</span> <strong style="color: #15803d;">05:30 AM ✓</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>2. Current Location:</span> <strong>${farm.district} Bypass (In Transit)</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; color: #b45309; font-weight: bold;">
-              <span>3. Mandi Weighbridge ETA:</span> <span>06:12 AM (18 Mins)</span>
-            </div>
-          </div>
-
           <!-- DOWNSIDE DOWNLOADABLE RECEIPT CARD -->
-          <div style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 12px; margin-top: 12px;">
+          <div style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 10px; margin-top: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="font-size: 12px; font-weight: 800; color: #166534;">📜 Official Transport Booking & Escrow Invoice</span>
+              <span style="font-size: 11px; font-weight: 800; color: #166534;">📜 Transport Booking & Escrow Invoice</span>
               <span class="m-badge m-badge-green">100% Paid</span>
             </div>
-            <div style="font-size: 10.5px; color: #14532d; margin-bottom: 8px;">
-              Invoice Ref: <strong>${booking.id}</strong> • Freight Amount: <strong>₹${booking.amount}.00</strong>
+            <div style="font-size: 10px; color: #14532d; margin-bottom: 6px;">
+              Ref: <strong>${booking.id}</strong> • Freight: <strong>₹${booking.amount}.00</strong>
             </div>
-            <button class="m-btn m-btn-green" onclick="RidePoolingScreen.downloadActiveReceipt()" style="font-size: 12px;">
+            <button class="m-btn m-btn-green" onclick="RidePoolingScreen.downloadActiveReceipt()" style="font-size: 11.5px; padding: 8px;">
               📄 Download Certified Transport Receipt PDF
             </button>
           </div>
@@ -162,6 +214,12 @@ const RidePoolingScreen = {
               </div>
               <span class="m-badge m-badge-green">700 kg Vacant</span>
             </div>
+            <!-- Dynamic ETA Bar -->
+            <div style="display: flex; gap: 6px; font-size: 9.5px; margin-top: 6px; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid #bbf7d0;">
+              <span style="color: #047857; font-weight: 700;">🚜 Pickup ETA: <strong>12 Mins</strong></span>
+              <span style="color: #64748b;">•</span>
+              <span style="color: #1d4ed8; font-weight: 700;">🏁 Produce Delivery ETA: <strong>38 Mins</strong></span>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #86efac;">
               <span style="font-size: 12px; font-weight: 800; color: #15803d;">₹800 / slot</span>
               <div style="display: flex; gap: 6px;">
@@ -183,6 +241,12 @@ const RidePoolingScreen = {
                 <div style="font-size: 10px; color: #64748b;">${farm.district} Rural ➔ ${mandiInfo.secondaryMandi} (Depart: 09:00 PM)</div>
               </div>
               <span class="m-badge m-badge-blue">1,200 kg Vacant</span>
+            </div>
+            <!-- Dynamic ETA Bar -->
+            <div style="display: flex; gap: 6px; font-size: 9.5px; margin-top: 6px; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <span style="color: #047857; font-weight: 700;">🚜 Pickup ETA: <strong>20 Mins</strong></span>
+              <span style="color: #64748b;">•</span>
+              <span style="color: #1d4ed8; font-weight: 700;">🏁 Produce Delivery ETA: <strong>45 Mins</strong></span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1;">
               <span style="font-size: 12px; font-weight: 800; color: #0f381e;">₹1,100 / slot</span>
@@ -220,6 +284,12 @@ const RidePoolingScreen = {
               </div>
               <span class="m-badge m-badge-green">Instant Dispatch</span>
             </div>
+            <!-- Dynamic ETA Bar -->
+            <div style="display: flex; gap: 6px; font-size: 9.5px; margin-top: 6px; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <span style="color: #047857; font-weight: 700;">🚜 Farm Pickup: <strong>~15 Mins</strong></span>
+              <span style="color: #64748b;">•</span>
+              <span style="color: #1d4ed8; font-weight: 700;">🏁 Buyer Delivery ETA: <strong>35 Mins</strong></span>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1;">
               <div>
                 <span style="font-size: 13px; font-weight: 800; color: #0f381e;">₹2,200</span>
@@ -239,6 +309,12 @@ const RidePoolingScreen = {
                 <div style="font-size: 10px; color: #64748b;">Bulk Long-Haul Transport • Chennai / Bangalore Mandis</div>
               </div>
               <span class="m-badge m-badge-blue">Heavy Load</span>
+            </div>
+            <!-- Dynamic ETA Bar -->
+            <div style="display: flex; gap: 6px; font-size: 9.5px; margin-top: 6px; background: #ffffff; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <span style="color: #047857; font-weight: 700;">🚜 Farm Pickup: <strong>~30 Mins</strong></span>
+              <span style="color: #64748b;">•</span>
+              <span style="color: #1d4ed8; font-weight: 700;">🏁 Buyer Delivery ETA: <strong>120 Mins (Inter-district)</strong></span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1;">
               <div>

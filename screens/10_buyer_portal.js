@@ -35,19 +35,22 @@ const BuyerPortalScreen = {
           </button>
         </div>
 
-        <!-- 4-Pill Navigation Toolbar -->
+        <!-- 5-Pill Navigation Toolbar -->
         <div style="display: flex; gap: 3px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: var(--radius-full); margin-top: 10px;">
-          <button class="m-btn ${this.currentTab === 'lots' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('lots')" style="flex: 1; padding: 6px 4px; font-size: 9.5px; border-radius: var(--radius-full); color: white;">
+          <button class="m-btn ${this.currentTab === 'lots' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('lots')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white;">
             ${I18nService.t('tab_lots')} (${postedLots.length})
           </button>
-          <button class="m-btn ${this.currentTab === 'tracking' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('tracking')" style="flex: 1; padding: 6px 4px; font-size: 9.5px; border-radius: var(--radius-full); color: white;">
+          <button class="m-btn ${this.currentTab === 'tracking' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('tracking')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white;">
             ${I18nService.t('tab_tracking')}
           </button>
-          <button class="m-btn ${this.currentTab === 'weighbridge' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('weighbridge')" style="flex: 1; padding: 6px 4px; font-size: 9.5px; border-radius: var(--radius-full); color: white;">
+          <button class="m-btn ${this.currentTab === 'weighbridge' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('weighbridge')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white;">
             ${I18nService.t('tab_weighbridge')}
           </button>
-          <button class="m-btn ${this.currentTab === 'invoices' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('invoices')" style="flex: 1; padding: 6px 4px; font-size: 9.5px; border-radius: var(--radius-full); color: white;">
+          <button class="m-btn ${this.currentTab === 'invoices' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('invoices')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white;">
             ${I18nService.t('tab_invoices')}
+          </button>
+          <button class="m-btn m-btn-outline" onclick="App.navigateTo('grievance')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white; background: rgba(220,38,38,0.25); border-color: #fca5a5;">
+            🎧 Help
           </button>
         </div>
       </div>
