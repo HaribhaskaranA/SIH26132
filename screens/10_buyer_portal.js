@@ -1,10 +1,30 @@
 // Mobile Screen 10: Institutional Buyer Procurement, Gemini Quality Verification & Escrow Portal
 const BuyerPortalScreen = {
-  currentTab: 'lots', // 'lots', 'tracking', 'weighbridge', 'invoices'
+  currentTab: 'lots', // 'lots', 'tracking', 'weighbridge', 'invoices', 'help'
   trackingMap: null,
   truckMarker: null,
   trackingInterval: null,
   geminiVerifiedLots: {},
+  transportStageIndex: 3, // 0: Assigned, 1: Reaching Farm, 2: Pickup Done, 3: In Transit, 4: Delivered
+  transportStages: [
+    { id: 'ASSIGNED', name: 'Assigned', icon: '📋', desc: 'Driver Murugan K Allocated' },
+    { id: 'REACHING_FARM', name: 'Reaching Farm', icon: '🚜', desc: 'En Route to Farmgate' },
+    { id: 'PICKUP_DONE', name: 'Pickup Done', icon: '📦', desc: 'Loaded & Weighed at Farm' },
+    { id: 'IN_TRANSIT', name: 'In Transit', icon: '🚚', desc: 'Produce Heading to Hub' },
+    { id: 'DELIVERED', name: 'Delivered', icon: '🏁', desc: 'Arrived at Weighbridge' }
+  ],
+
+  setBuyerTransportStage: function(index) {
+    this.transportStageIndex = Math.max(0, Math.min(index, this.transportStages.length - 1));
+    const container = document.getElementById('mobileMainContent');
+    this.render(container);
+  },
+
+  advanceBuyerTransportStage: function() {
+    this.transportStageIndex = (this.transportStageIndex + 1) % this.transportStages.length;
+    const container = document.getElementById('mobileMainContent');
+    this.render(container);
+  },
 
   switchTab: function(tab) {
     if (this.trackingInterval) clearInterval(this.trackingInterval);
@@ -49,7 +69,7 @@ const BuyerPortalScreen = {
           <button class="m-btn ${this.currentTab === 'invoices' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('invoices')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white;">
             ${I18nService.t('tab_invoices')}
           </button>
-          <button class="m-btn m-btn-outline" onclick="App.navigateTo('grievance')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white; background: rgba(220,38,38,0.25); border-color: #fca5a5;">
+          <button class="m-btn ${this.currentTab === 'help' ? 'm-btn-green' : 'm-btn-outline'}" onclick="BuyerPortalScreen.switchTab('help')" style="flex: 1; padding: 6px 2px; font-size: 9px; border-radius: var(--radius-full); color: white; ${this.currentTab === 'help' ? 'background: #0284c7; border-color: #38bdf8;' : 'background: rgba(220,38,38,0.25); border-color: #fca5a5;'}">
             🎧 Help
           </button>
         </div>
@@ -78,6 +98,8 @@ const BuyerPortalScreen = {
         return this.renderWeighbridgeView();
       case 'invoices':
         return this.renderInvoicesView();
+      case 'help':
+        return this.renderHelpView();
       case 'lots':
       default:
         return this.renderLotsView(lots);
@@ -484,29 +506,93 @@ const BuyerPortalScreen = {
   renderGpsTrackingView: function() {
     const lots = this.getPostedLots();
     const activeLot = lots[0] || { lotId: '#LOT-TN-902', farmerId: 'EW-TN-8842', crop: 'Tomato' };
+    const currStage = this.transportStages[this.transportStageIndex];
 
     return `
       <div class="m-card">
         <div class="m-card-header">
           <div class="m-card-title">${I18nService.t('lbl_live_fleet_telemetry')}</div>
-          <span class="m-badge m-badge-green">● Moving (42 km/h)</span>
+          <span class="m-badge ${this.transportStageIndex === 4 ? 'm-badge-green' : 'm-badge-blue'}">
+            ● ${currStage.name}
+          </span>
         </div>
 
         <p style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 8px;">
-          Live real-time transit tracking of mini-truck transporting Lot ${activeLot.lotId} from Farmer #${activeLot.farmerId} to Reliance Fresh Fulfillment Center:
+          Live real-time transit tracking of consignment Lot ${activeLot.lotId} from Farmer #${activeLot.farmerId} to Reliance Fresh Fulfillment Center:
         </p>
 
+        <!-- 5-STAGE TRANSPORT STATUS STEPPER -->
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 8px; margin-bottom: 10px;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #0f381e; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🚀 Consignment Transit Progress:</span>
+            <span style="font-size: 10px; color: #0284c7; font-weight: 700;">Stage ${this.transportStageIndex + 1} of 5</span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; position: relative; margin-bottom: 6px;">
+            ${this.transportStages.map((stg, i) => {
+              const isPassed = i < this.transportStageIndex;
+              const isCurrent = i === this.transportStageIndex;
+              const bg = isCurrent ? '#0284c7' : isPassed ? '#16a34a' : '#e2e8f0';
+              const color = isCurrent || isPassed ? '#ffffff' : '#64748b';
+              return `
+                <div onclick="BuyerPortalScreen.setBuyerTransportStage(${i})" style="flex: 1; text-align: center; cursor: pointer;">
+                  <div style="width: 24px; height: 24px; border-radius: 50%; background: ${bg}; color: ${color}; font-size: 11px; display: flex; align-items: center; justify-content: center; margin: 0 auto 3px auto; font-weight: 800; box-shadow: ${isCurrent ? '0 0 8px rgba(2,132,199,0.5)' : 'none'};">
+                    ${isPassed ? '✓' : stg.icon}
+                  </div>
+                  <div style="font-size: 8.5px; font-weight: ${isCurrent ? '800' : '600'}; color: ${isCurrent ? '#0284c7' : '#475569'}; line-height: 1.1;">
+                    ${stg.name}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div style="background: #f0f9ff; border-radius: 6px; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 4px; border: 1px solid #bae6fd;">
+            <span style="font-size: 10px; color: #0369a1; font-weight: 700;">
+              Status: <strong>${currStage.name}</strong> • ${currStage.desc}
+            </span>
+            <button class="m-btn m-btn-green" onclick="BuyerPortalScreen.advanceBuyerTransportStage()" style="width: auto; padding: 3px 8px; font-size: 9.5px; background: #0284c7; border-color: #0284c7;">
+              ⚡ Next Step →
+            </button>
+          </div>
+        </div>
+
+        <!-- CRYSTAL-CLEAR DUAL ETA READOUT -->
+        <div class="m-grid-2" style="margin-bottom: 8px;">
+          <!-- ETA 1: Farmgate Pickup Status -->
+          <div class="m-stat-box" style="background: ${this.transportStageIndex < 2 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.transportStageIndex < 2 ? '#10b981' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
+            <div style="font-size: 9px; color: #047857; font-weight: 800; text-transform: uppercase;">🚜 Farmgate Pickup ETA:</div>
+            <div class="m-stat-val" style="color: ${this.transportStageIndex < 2 ? '#15803d' : '#64748b'}; font-size: 15px; margin: 3px 0;">
+              ${this.transportStageIndex < 2 ? '12 mins (En Route)' : '✓ Pickup Done'}
+            </div>
+            <div style="font-size: 9px; color: #64748b;">
+              ${this.transportStageIndex < 2 ? 'Distance to Farm: 4.2 km' : 'Weighed & Dispatched: 2,000 kg'}
+            </div>
+          </div>
+
+          <!-- ETA 2: Warehouse Delivery ETA -->
+          <div class="m-stat-box" style="background: ${this.transportStageIndex >= 2 && this.transportStageIndex < 4 ? '#eff6ff' : this.transportStageIndex === 4 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.transportStageIndex >= 2 ? '#3b82f6' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
+            <div style="font-size: 9px; color: #1d4ed8; font-weight: 800; text-transform: uppercase;">🏁 Warehouse Delivery ETA:</div>
+            <div class="m-stat-val" style="color: ${this.transportStageIndex === 4 ? '#15803d' : '#1d4ed8'}; font-size: 15px; margin: 3px 0;">
+              ${this.transportStageIndex === 4 ? '✓ Arrived at Hub' : this.transportStageIndex >= 2 ? '18 mins' : 'Est. ~45 mins'}
+            </div>
+            <div style="font-size: 9px; color: #64748b;">
+              ${this.transportStageIndex === 4 ? 'At Ingestion Weighbridge' : 'Remaining: 10.4 km (SH-15)'}
+            </div>
+          </div>
+        </div>
+
         <!-- Interactive Map Canvas -->
-        <div id="buyerGpsMap" class="m-map-container" style="height: 220px; margin-bottom: 8px;"></div>
+        <div id="buyerGpsMap" class="m-map-container" style="height: 200px; margin-bottom: 8px;"></div>
 
         <!-- Telemetry Readout -->
         <div class="m-grid-3">
           <div class="m-stat-box" style="background: #f0fdf4; border-color: #86efac;">
-            <div class="m-stat-val" style="color: #15803d;" id="buyerTrackEta">18 min</div>
+            <div class="m-stat-val" style="color: #15803d;" id="buyerTrackEta">${this.transportStageIndex === 4 ? '0 min' : '18 min'}</div>
             <div class="m-stat-lbl">${I18nService.t('lbl_eta_warehouse')}</div>
           </div>
           <div class="m-stat-box">
-            <div class="m-stat-val" id="buyerTrackDist">10.4 km</div>
+            <div class="m-stat-val" id="buyerTrackDist">${this.transportStageIndex === 4 ? '0 km' : '10.4 km'}</div>
             <div class="m-stat-lbl">${I18nService.t('lbl_dist_remaining')}</div>
           </div>
           <div class="m-stat-box">
@@ -520,7 +606,7 @@ const BuyerPortalScreen = {
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div style="font-size: 12px; font-weight: 800; color: #0f381e;">🚛 Driver: Murugan K (Bolero Maxi Truck)</div>
-              <div style="font-size: 10px; color: #64748b;">Vehicle: <strong>TN-25-AK-4820</strong> • Reefer Temp: <strong>4.2°C</strong></div>
+              <div style="font-size: 10px; color: #64748b;">Vehicle: <strong>TN-25-AK-4820</strong> • Reefer Temp: <strong style="color: #0284c7;">4.2°C (Optimal)</strong></div>
             </div>
             <button class="m-btn m-btn-green" style="padding: 6px 12px; width: auto; font-size: 11px;" onclick="BuyerPortalScreen.callDriver('Murugan K (TN-25-AK-4820)')">
               ${I18nService.t('btn_call_driver')}
@@ -609,6 +695,273 @@ const BuyerPortalScreen = {
             </div>
           </div>
         `).join('')}
+      </div>
+    `;
+  },
+
+  // 7. BUYER HELP & COMPLAINT SYSTEM (STRICTLY WITHIN BUYER PORTAL)
+  getBuyerComplaints: function() {
+    let list = [];
+    try {
+      list = JSON.parse(localStorage.getItem('earthworm_buyer_complaints') || '[]');
+    } catch (e) {
+      list = [];
+    }
+    if (!list || list.length === 0) {
+      list = [
+        {
+          id: '#CMP-BUY-2026-902',
+          docketId: '#EW-GR-BUY-902',
+          category: 'Quality Grading / Moisture Dispute',
+          reference: 'Lot #LOT-TN-902 (Tomato)',
+          description: 'Delivered tomato consignment moisture content 88% exceeds AI scan baseline (82%). Secondary APMC inspection requested.',
+          status: 'UNDER_REVIEW',
+          stageIndex: 1,
+          createdAt: 'Today, 11:20 AM',
+          sla: '24-Hour Statutory APMC SLA'
+        }
+      ];
+      localStorage.setItem('earthworm_buyer_complaints', JSON.stringify(list));
+    }
+    return list;
+  },
+
+  submitBuyerComplaint: function() {
+    const cat = document.getElementById('buyerCompCategory').value;
+    const ref = document.getElementById('buyerCompReference').value.trim();
+    const desc = document.getElementById('buyerCompDescription').value.trim();
+
+    if (!desc) {
+      alert("⚠️ Please enter a description of your complaint.");
+      return;
+    }
+
+    const cleanNum = Math.floor(1000 + Math.random() * 9000);
+    const compId = `#CMP-BUY-2026-${cleanNum}`;
+    const docketId = `#EW-GR-BUY-${cleanNum}`;
+
+    const newComp = {
+      id: compId,
+      docketId: docketId,
+      category: cat,
+      reference: ref || 'Consignment Lot',
+      description: desc,
+      status: 'SUBMITTED',
+      stageIndex: 0,
+      createdAt: 'Just now',
+      sla: '24-Hour Statutory APMC SLA'
+    };
+
+    let complaints = this.getBuyerComplaints();
+    complaints.unshift(newComp);
+    localStorage.setItem('earthworm_buyer_complaints', JSON.stringify(complaints));
+
+    // Also sync to general earthworm_user_complaints
+    try {
+      let allComplaints = JSON.parse(localStorage.getItem('earthworm_user_complaints') || '[]');
+      allComplaints.unshift({
+        ...newComp,
+        userRole: 'buyer',
+        userId: localStorage.getItem('earthworm_buyer_id') || 'BUYER-REL-901'
+      });
+      localStorage.setItem('earthworm_user_complaints', JSON.stringify(allComplaints));
+    } catch(e) {}
+
+    // Sync to Supabase grievances table
+    if (typeof SupabaseService !== 'undefined') {
+      try {
+        SupabaseService.fileGrievance({
+          docketId: docketId,
+          farmerId: localStorage.getItem('earthworm_buyer_id') || 'BUYER-REL-901',
+          district: 'Coimbatore',
+          disputeType: cat,
+          traderName: 'Reliance Fresh Institutional Procurement',
+          mandiName: 'Coimbatore Regulated Market Committee',
+          claimAmount: 57000,
+          description: `[BUYER DISPUTE] ${ref ? `[Ref: ${ref}] ` : ''}${desc}`
+        });
+      } catch (e) {}
+    }
+
+    alert(`🎉 Buyer Complaint Submitted Successfully!\n\n• Complaint ID: ${compId}\n• Docket ID: ${docketId}\n• Status: Submitted (24-Hour SLA Initiated)\n• Conciliation Desk: APMC Institutional Desk.`);
+    
+    const container = document.getElementById('mobileMainContent');
+    this.render(container);
+  },
+
+  advanceBuyerComplaint: function(index) {
+    let complaints = this.getBuyerComplaints();
+    if (complaints[index]) {
+      const c = complaints[index];
+      if (c.stageIndex === 0) {
+        c.stageIndex = 1;
+        c.status = 'UNDER_REVIEW';
+      } else if (c.stageIndex === 1) {
+        c.stageIndex = 2;
+        c.status = 'RESOLVED';
+      } else {
+        c.stageIndex = 0;
+        c.status = 'SUBMITTED';
+      }
+      localStorage.setItem('earthworm_buyer_complaints', JSON.stringify(complaints));
+      const container = document.getElementById('mobileMainContent');
+      this.render(container);
+    }
+  },
+
+  renderHelpView: function() {
+    const complaints = this.getBuyerComplaints();
+    const lots = this.getPostedLots();
+    const activeLot = lots[0] || { lotId: '#LOT-TN-902', farmerId: 'EW-TN-8842', crop: 'Tomato' };
+
+    return `
+      <!-- Active Complaints Section with Status Stepper -->
+      <div class="m-card">
+        <div class="m-card-header">
+          <div class="m-card-title">📋 Filed Complaints & Live Tracking</div>
+          <span class="m-badge m-badge-green">${complaints.length} Lodged</span>
+        </div>
+
+        <p style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 10px;">
+          Track status and resolution of your institutional procurement complaints:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          ${complaints.map((c, idx) => `
+            <div style="background: #ffffff; border: 1.5px solid ${c.status === 'RESOLVED' ? '#86efac' : c.status === 'UNDER_REVIEW' ? '#93c5fd' : '#fde047'}; border-radius: 8px; padding: 10px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div>
+                  <strong style="color: #0f172a; font-size: 12px;">${c.id}</strong>
+                  <span style="font-size: 9.5px; color: #64748b;">(${c.docketId})</span>
+                </div>
+                <span class="m-badge ${c.status === 'RESOLVED' ? 'm-badge-green' : c.status === 'UNDER_REVIEW' ? 'm-badge-blue' : 'm-badge-green'}" style="font-size: 9px;">
+                  ${c.status === 'RESOLVED' ? '✓ Resolved' : c.status === 'UNDER_REVIEW' ? '⏳ Under Review' : '📩 Submitted'}
+                </span>
+              </div>
+
+              <div style="font-weight: 700; color: #1e293b; margin-bottom: 2px;">
+                Category: ${c.category}
+              </div>
+              ${c.reference ? `<div style="font-size: 9.5px; color: #0284c7; margin-bottom: 4px;">Consignment Ref: <strong>${c.reference}</strong></div>` : ''}
+              <div style="font-size: 10px; color: #475569; background: #f8fafc; padding: 6px; border-radius: 4px; margin-bottom: 8px; line-height: 1.4;">
+                "${c.description}"
+              </div>
+
+              <!-- 3-STAGE STATUS STEPPER -->
+              <div style="background: #f1f5f9; padding: 8px 6px; border-radius: 6px;">
+                <div style="font-size: 9.5px; font-weight: 800; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                  <span>Resolution Progress:</span>
+                  <span style="font-size: 9px; color: #0284c7;">${c.sla || '24-Hr SLA'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; position: relative;">
+                  <!-- Step 1: Submitted -->
+                  <div style="flex: 1; text-align: center;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: #16a34a; color: white; font-size: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px auto; font-weight: bold;">✓</div>
+                    <div style="font-size: 8px; font-weight: 700; color: #166534;">1. Submitted</div>
+                  </div>
+                  <!-- Step 2: Under Review -->
+                  <div style="flex: 1; text-align: center;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: ${c.stageIndex >= 1 ? '#0284c7' : '#cbd5e1'}; color: white; font-size: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px auto; font-weight: bold;">
+                      ${c.stageIndex >= 1 ? (c.stageIndex > 1 ? '✓' : '●') : '2'}
+                    </div>
+                    <div style="font-size: 8px; font-weight: 700; color: ${c.stageIndex >= 1 ? '#0369a1' : '#64748b'};">2. Under Review</div>
+                  </div>
+                  <!-- Step 3: Resolved -->
+                  <div style="flex: 1; text-align: center;">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: ${c.stageIndex >= 2 ? '#16a34a' : '#cbd5e1'}; color: white; font-size: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px auto; font-weight: bold;">
+                      ${c.stageIndex >= 2 ? '✓' : '3'}
+                    </div>
+                    <div style="font-size: 8px; font-weight: 700; color: ${c.stageIndex >= 2 ? '#166534' : '#64748b'};">3. Resolved</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 9px; color: #64748b;">
+                <span>Filed: ${c.createdAt}</span>
+                <button onclick="BuyerPortalScreen.advanceBuyerComplaint(${idx})" style="background: none; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 9px; color: #1e293b; cursor: pointer;">
+                  ⚡ Progress Status →
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Lodge a New Complaint Section -->
+      <div class="m-card">
+        <div class="m-card-header">
+          <div class="m-card-title">📝 Raise a Procurement Complaint</div>
+          <span class="m-badge m-badge-blue">Institutional Desk</span>
+        </div>
+
+        <p style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 10px;">
+          Submit your dispute directly to the APMC Conciliation Officer and Earthworm Escrow Desk:
+        </p>
+
+        <!-- Category Dropdown -->
+        <div class="m-input-group">
+          <label>Complaint Category *</label>
+          <select id="buyerCompCategory" class="m-input" style="font-weight: 700;">
+            <option value="Quality Grading / Moisture Dispute">⚖️ Quality Grading / Moisture Mismatch (Delivered vs Scanned)</option>
+            <option value="Transport Delay / ETA Breach">🚚 Transport Delay / Delivery ETA Breach</option>
+            <option value="Weighbridge Quantity Discrepancy">⚖️ Weighbridge Weight Discrepancy / Shortage</option>
+            <option value="Escrow / Excess Debit Dispute">🔒 Escrow / Excess Debit / Refund Request</option>
+            <option value="Cold Storage Bay Dispatch Delay">❄️ Cold Storage Bay Access / Dispatch Delay</option>
+            <option value="Invoice & GST Tax Credit Dispute">📑 Institutional Tax Invoice / GST Mismatch</option>
+            <option value="General Buyer Technical Support">🛠️ General Procurement & Account Support</option>
+          </select>
+        </div>
+
+        <!-- Consignment / Lot Reference -->
+        <div class="m-input-group">
+          <label>Consignment / Lot Reference</label>
+          <input type="text" id="buyerCompReference" class="m-input" placeholder="e.g. Lot #LOT-TN-902 or PO-BUY-902" value="Lot ${activeLot.lotId} (Farmer #${activeLot.farmerId})">
+        </div>
+
+        <!-- Description Textarea -->
+        <div class="m-input-group">
+          <label>Describe Your Issue *</label>
+          <textarea id="buyerCompDescription" class="m-input" rows="3" placeholder="Provide full details of the discrepancy or delivery issue..." style="resize: vertical; font-size: 11px;">Consignment delivered to Reliance Hub has 6% higher moisture content than certified in pre-transit AI grading report. Requesting escrow adjustment.</textarea>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="m-btn m-btn-green" onclick="BuyerPortalScreen.submitBuyerComplaint()" style="font-size: 12px; margin-top: 4px; background: #0284c7; border-color: #0284c7;">
+          🚀 Submit Complaint & Generate Docket ID
+        </button>
+      </div>
+
+      <!-- Institutional Helplines Card -->
+      <div class="m-card">
+        <div class="m-card-header">
+          <div class="m-card-title">🏛️ Institutional Resolution Hotlines</div>
+          <span class="m-badge m-badge-green">Govt. Verified</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+          <div style="background: #eff6ff; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #bfdbfe; color: #1e3a8a;">
+            <div>
+              <strong>🏢 Institutional Buyer Helpdesk</strong>
+              <div style="font-size: 9.5px; color: #2563eb;">Direct priority conciliation line (Toll-Free)</div>
+            </div>
+            <strong style="color: #1d4ed8; font-size: 12px;">1800-425-2420</strong>
+          </div>
+
+          <a href="https://enam.gov.in/web/grievance" target="_blank" style="text-decoration: none; color: #1d4ed8; background: #f0fdf4; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #bbf7d0;">
+            <div>
+              <strong>🏛️ e-NAM Mandi Dispute Gateway</strong>
+              <div style="font-size: 9.5px; color: #166534;">Statutory appeal under APMC Act 2026</div>
+            </div>
+            <span style="font-size: 10px; font-weight: 700; color: #15803d;">enam.gov.in ↗</span>
+          </a>
+
+          <div style="background: #fefce8; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #fef08a; color: #713f12;">
+            <div>
+              <strong>🔒 Escrow Dispute & DBT Cell</strong>
+              <div style="font-size: 9.5px; color: #854d0e;">Automated 24-hr payment reversal officer</div>
+            </div>
+            <strong style="color: #a16207; font-size: 11px;">escrow@earthworm.org</strong>
+          </div>
+        </div>
       </div>
     `;
   },

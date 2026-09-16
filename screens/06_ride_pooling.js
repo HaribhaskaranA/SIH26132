@@ -136,27 +136,46 @@ window.RidePoolingScreen = {
             </div>
           </div>
 
-          <!-- DUAL ESTIMATED TIME CARDS (PICKUP ETA & BUYER DELIVERY ETA) -->
+          <!-- CRYSTAL-CLEAR DUAL ESTIMATED TIME CARDS (PICKUP ETA & BUYER DELIVERY ETA) -->
+          <div style="background: linear-gradient(135deg, #0f381e 0%, #166534 100%); color: white; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 10px; font-weight: 800; color: #fde047; text-transform: uppercase; letter-spacing: 0.5px;">
+              ⏱️ Real-Time Transport ETA Tracking
+            </div>
+            <div style="font-size: 9.5px; color: #86efac; font-weight: 700;">
+              🌾 Farmgate ➔ 🚚 Highway ➔ 🏛️ Mandi
+            </div>
+          </div>
+
           <div class="m-grid-2" style="margin-bottom: 8px;">
             <!-- ETA 1: Vehicle Reaching Farm (Pickup) -->
-            <div class="m-stat-box" style="background: ${this.currentStageIndex < 2 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.currentStageIndex < 2 ? '#10b981' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
-              <div style="font-size: 9px; color: #047857; font-weight: 700;">🚜 Pickup ETA (To Farmgate):</div>
-              <div class="m-stat-val" style="color: ${this.currentStageIndex < 2 ? '#15803d' : '#64748b'}; font-size: 16px;">
+            <div class="m-stat-box" style="background: ${this.currentStageIndex < 2 ? '#ecfdf5' : '#f8fafc'}; border: 2px solid ${this.currentStageIndex < 2 ? '#10b981' : '#cbd5e1'}; text-align: left; padding: 9px 10px; box-shadow: ${this.currentStageIndex < 2 ? '0 2px 8px rgba(16,185,129,0.15)' : 'none'};">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <span style="font-size: 9.5px; color: #047857; font-weight: 800; text-transform: uppercase;">🚜 Pickup ETA:</span>
+                <span class="m-badge ${this.currentStageIndex < 2 ? 'm-badge-green' : 'm-badge-outline'}" style="font-size: 8px; padding: 1px 5px;">
+                  ${this.currentStageIndex < 2 ? 'Active' : 'Done ✓'}
+                </span>
+              </div>
+              <div class="m-stat-val" style="color: ${this.currentStageIndex < 2 ? '#15803d' : '#64748b'}; font-size: 17px; font-weight: 900; margin: 3px 0;">
                 ${this.currentStageIndex < 2 ? '12 mins' : '✓ Arrived & Loaded'}
               </div>
-              <div style="font-size: 9px; color: #64748b;">
-                ${this.currentStageIndex < 2 ? 'Distance: 4.2 km (En Route)' : 'Farmgate Pickup Complete'}
+              <div style="font-size: 9px; color: #475569; line-height: 1.2;">
+                ${this.currentStageIndex < 2 ? 'Distance: <strong>4.2 km</strong> (Vehicle reaching farm)' : 'Farmgate Pickup & Weighing Complete'}
               </div>
             </div>
 
             <!-- ETA 2: Produce Reaching Buyer / Mandi -->
-            <div class="m-stat-box" style="background: ${this.currentStageIndex >= 2 && this.currentStageIndex < 4 ? '#eff6ff' : this.currentStageIndex === 4 ? '#ecfdf5' : '#f8fafc'}; border: 1.5px solid ${this.currentStageIndex >= 2 ? '#3b82f6' : '#cbd5e1'}; text-align: left; padding: 8px 10px;">
-              <div style="font-size: 9px; color: #1d4ed8; font-weight: 700;">🏁 Delivery ETA (To Buyer):</div>
-              <div class="m-stat-val" style="color: ${this.currentStageIndex === 4 ? '#15803d' : '#1d4ed8'}; font-size: 16px;">
+            <div class="m-stat-box" style="background: ${this.currentStageIndex >= 2 && this.currentStageIndex < 4 ? '#eff6ff' : this.currentStageIndex === 4 ? '#ecfdf5' : '#f8fafc'}; border: 2px solid ${this.currentStageIndex >= 2 ? '#3b82f6' : '#cbd5e1'}; text-align: left; padding: 9px 10px; box-shadow: ${this.currentStageIndex >= 2 ? '0 2px 8px rgba(59,130,246,0.15)' : 'none'};">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <span style="font-size: 9.5px; color: #1d4ed8; font-weight: 800; text-transform: uppercase;">🏁 Delivery ETA:</span>
+                <span class="m-badge ${this.currentStageIndex === 4 ? 'm-badge-green' : this.currentStageIndex >= 2 ? 'm-badge-blue' : 'm-badge-outline'}" style="font-size: 8px; padding: 1px 5px;">
+                  ${this.currentStageIndex === 4 ? 'Delivered' : this.currentStageIndex >= 2 ? 'In Transit' : 'Scheduled'}
+                </span>
+              </div>
+              <div class="m-stat-val" style="color: ${this.currentStageIndex === 4 ? '#15803d' : '#1d4ed8'}; font-size: 17px; font-weight: 900; margin: 3px 0;">
                 ${this.currentStageIndex === 4 ? '✓ Delivered' : this.currentStageIndex >= 2 ? '28 mins' : 'Est. ~45 mins'}
               </div>
-              <div style="font-size: 9px; color: #64748b;">
-                ${this.currentStageIndex === 4 ? 'At Mandi Weighbridge' : 'Target: ' + mandiInfo.mandi}
+              <div style="font-size: 9px; color: #475569; line-height: 1.2;">
+                ${this.currentStageIndex === 4 ? 'Produce arrived at Mandi Weighbridge' : 'Target: <strong>' + mandiInfo.mandi + '</strong> (18.5 km)'}
               </div>
             </div>
           </div>
